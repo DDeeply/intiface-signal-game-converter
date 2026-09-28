@@ -1,0 +1,21 @@
+﻿# Dependencies
+node_modules/
+package-lock.json
+
+# Build Outputs (Binaries should be released via GitHub Releases)
+dist/
+*.exe
+
+# User config & state
+settings.json
+config.json
+
+# Logs & temp files
+*.log
+last_device_raw.json
+last_game_cmd.json
+
+# OS files
+Thumbs.db
+.DS_Store
+desktop.ini

@@ -1,0 +1,213 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intiface 信号转换代理</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔌</text></svg>">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',-apple-system,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
+.container{max-width:640px;margin:0 auto;padding:20px 16px}
+header{text-align:center;margin-bottom:20px}
+header h1{font-size:20px;font-weight:600;color:#f1f5f9;margin-bottom:10px}
+.status-bar{display:flex;justify-content:center;gap:18px;font-size:12px;color:#94a3b8}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle;transition:all .3s}
+.dot.on{background:#10b981;box-shadow:0 0 6px #10b981}
+.dot.off{background:#ef4444;box-shadow:0 0 4px #ef444466}
+.card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 18px;margin-bottom:14px}
+.card h2{font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:10px}
+.device-name{font-size:15px;color:#f1f5f9;font-weight:500}
+.dim{color:#475569;font-style:italic;font-size:13px}
+.mode-buttons{display:flex;gap:6px}
+.mbtn{flex:1;padding:9px 6px;border:2px solid #334155;border-radius:8px;background:0;color:#94a3b8;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.mbtn:hover{border-color:#475569;color:#e2e8f0}
+.mbtn.active{border-color:#3b82f6;background:rgba(59,130,246,.1);color:#60a5fa}
+.mode-hint{font-size:11px;color:#475569;margin-bottom:8px}
+.fcard{background:#0f172a;border:1px solid #1e293b;border-radius:8px;padding:12px 14px;margin-bottom:8px}
+.fhdr{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.ftoggle{width:16px;height:16px;cursor:pointer;accent-color:#3b82f6}
+.flabel{font-size:13px;font-weight:500;flex:1}
+.ftag{font-size:11px;padding:2px 7px;border-radius:4px;font-weight:500}
+.srow{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.slbl{font-size:11px;color:#64748b;min-width:38px}
+.scont{flex:1}
+input[type=range]{width:100%;height:5px;-webkit-appearance:none;appearance:none;background:#334155;border-radius:3px;outline:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#3b82f6;cursor:pointer;border:0}
+.sval{font-size:12px;font-weight:600;color:#e2e8f0;min-width:38px;text-align:right}
+.ibar{height:3px;background:#1e293b;border-radius:2px;overflow:hidden;margin-top:2px}
+.ifill{height:100%;border-radius:2px;transition:width .08s ease;width:0%}
+.test-section{margin-top:10px;padding-top:10px;border-top:1px solid #1e293b}
+.log-box{height:160px;overflow-y:auto;font-family:'Cascadia Code',Consolas,monospace;font-size:11px;line-height:1.5;color:#64748b;background:#0f172a;border-radius:6px;padding:8px}
+.log-box::-webkit-scrollbar{width:5px}
+.log-box::-webkit-scrollbar-track{background:0}
+.log-box::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+.le{}
+.le.g{color:#10b981}
+.le.y{color:#f59e0b}
+.le.b{color:#60a5fa}
+.le.r{color:#ef4444}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Intiface 信号转换代理</h1>
+<div class="status-bar">
+<span><span class="dot off" id="gd"></span><span id="gt">游戏: 未连接</span></span>
+<span><span class="dot off" id="id"></span><span id="it">Intiface: 未连接</span></span>
+<span><span class="dot off" id="ud"></span><span id="ut">GUI: 连接中</span></span>
+</div>
+</header>
+
+<div class="card">
+<h2>设备</h2>
+<div id="devInfo"><span class="dim">等待设备连接...</span></div>
+</div>
+
+<div class="card">
+<h2>伪装模式</h2>
+<p class="mode-hint">选择游戏看到的设备类型（切换后游戏会自动重连）</p>
+<div class="mode-buttons" id="modeBar">
+<button class="mbtn active" data-m="vibrate" onclick="setMode('vibrate')">🔔 振动</button>
+<button class="mbtn" data-m="rotate" onclick="setMode('rotate')">🔄 旋转</button>
+<button class="mbtn" data-m="stroker" onclick="setMode('stroker')">↕️ 活塞</button>
+</div>
+</div>
+
+<div class="card">
+<h2>输出通道</h2>
+<div id="fcards"><span class="dim">等待设备检测...</span></div>
+<div class="test-section">
+<div class="srow">
+<span class="slbl" style="color:#94a3b8">测试</span>
+<div class="scont"><input type="range" min="0" max="100" value="0" id="testSlider" oninput="onTest(this.value)"></div>
+<span class="sval" id="testVal">0%</span>
+</div>
+<div style="font-size:11px;color:#475569;margin-top:2px">拖动滑块直接测试设备输出（无需游戏连接）</div>
+</div>
+</div>
+
+<div class="card">
+<h2>信号日志</h2>
+<div class="log-box" id="logBox"></div>
+</div>
+</div>
+
+<script>
+let ws=null, st={};
+const TC={Oscillate:'#8b5cf6',Vibrate:'#3b82f6',Rotate:'#f59e0b',Position:'#10b981'};
+const TL={Oscillate:'摆动',Vibrate:'振动',Rotate:'旋转',Position:'活塞'};
+
+function conn(){
+ws=new WebSocket('ws://'+location.host);
+ws.onopen=()=>{el('ud').className='dot on';el('ut').textContent='GUI: 已连接'};
+ws.onclose=()=>{el('ud').className='dot off';el('ut').textContent='GUI: 重连中...';setTimeout(conn,2000)};
+ws.onmessage=e=>handle(JSON.parse(e.data));
+}
+
+function handle(m){
+switch(m.type){
+case'fullState':st=m;updStatus(m);updMode(m.mode);updDev(m);break;
+case'status':updStatus(m);break;
+case'modeUpdate':updMode(m.mode);break;
+case'deviceUpdate':updDev(m);break;
+case'settingsUpdate':st.featureSettings=m.featureSettings;syncSliders();break;
+case'intensity':updIntensity(m);break;
+case'log':logEntry(m.message);break;
+}
+}
+
+function el(id){return document.getElementById(id)}
+
+function updStatus(d){
+if(d.gameConnected!==undefined){el('gd').className='dot '+(d.gameConnected?'on':'off');el('gt').textContent='游戏: '+(d.gameConnected?'已连接':'未连接')}
+if(d.intifaceConnected!==undefined){el('id').className='dot '+(d.intifaceConnected?'on':'off');el('it').textContent='Intiface: '+(d.intifaceConnected?'已连接':'未连接')}
+}
+
+function updMode(mode){
+st.mode=mode;
+document.querySelectorAll('.mbtn').forEach(b=>b.classList.toggle('active',b.dataset.m===mode));
+}
+
+function updDev(d){
+if(d.deviceName){
+st.deviceName=d.deviceName;st.features=d.features;st.featureSettings=d.featureSettings;
+el('devInfo').innerHTML='<span class="device-name">'+d.deviceName+'</span><span style="color:#64748b;font-size:12px;margin-left:6px">('+d.features.length+' 通道)</span>';
+renderCards(d.features,d.featureSettings);
+}else{
+el('devInfo').innerHTML='<span class="dim">等待设备连接...</span>';
+el('fcards').innerHTML='<span class="dim">等待设备检测...</span>';
+}
+}
+
+function renderCards(feats,settings){
+const c=el('fcards');c.innerHTML='';
+feats.forEach(f=>{
+const s=settings[f.index]||{enabled:true,sensitivity:1.0};
+const pct=Math.round(s.sensitivity*100);
+const color=TC[f.actuatorType]||'#64748b';
+const label=TL[f.actuatorType]||f.actuatorType;
+const d=document.createElement('div');d.className='fcard';d.id='fc-'+f.index;
+d.innerHTML=
+'<div class="fhdr">'+
+'<input type="checkbox" class="ftoggle" '+(s.enabled?'checked':'')+' onchange="setEn('+f.index+',this.checked)">'+
+'<span class="flabel">CH'+f.index+': '+f.featureDescriptor+'</span>'+
+'<span class="ftag" style="color:'+color+';border:1px solid '+color+'40">'+label+'</span>'+
+'</div>'+
+'<div class="srow">'+
+'<span class="slbl">灵敏度</span>'+
+'<div class="scont"><input type="range" min="0" max="300" value="'+pct+'" id="sl-'+f.index+'" oninput="onSl('+f.index+',this.value)" onchange="setSens('+f.index+',this.value)"></div>'+
+'<span class="sval" id="sv-'+f.index+'">'+pct+'%</span>'+
+'</div>'+
+'<div class="ibar"><div class="ifill" id="ib-'+f.index+'" style="background:linear-gradient(90deg,'+color+'66,'+color+')"></div></div>';
+c.appendChild(d);
+});
+}
+
+function syncSliders(){
+if(!st.features)return;
+st.features.forEach(f=>{
+const s=st.featureSettings[f.index];if(!s)return;
+const sl=el('sl-'+f.index),v=el('sv-'+f.index);
+if(sl)sl.value=Math.round(s.sensitivity*100);
+if(v)v.textContent=Math.round(s.sensitivity*100)+'%';
+});
+}
+
+function updIntensity(d){
+if(d.channels)d.channels.forEach(ch=>{const b=el('ib-'+ch.index);if(b)b.style.width=Math.round(ch.value*100)+'%'});
+// decay after 500ms if no new signal
+if(window._decayTimer)clearTimeout(window._decayTimer);
+if(d.base>0){
+window._decayTimer=setTimeout(()=>{
+if(!st.features)return;
+st.features.forEach(f=>{const b=el('ib-'+f.index);if(b)b.style.width='0%'});
+},500);
+}
+}
+
+function logEntry(msg){
+const c=el('logBox'),d=document.createElement('div');d.className='le';
+if(msg.includes('->')||msg.includes('全通道'))d.className+=' g';
+else if(msg.includes('模式')||msg.includes('切换'))d.className+=' y';
+else if(msg.includes('连接')||msg.includes('Intiface'))d.className+=' b';
+else if(msg.includes('错误')||msg.includes('异常'))d.className+=' r';
+d.textContent=msg;c.appendChild(d);
+while(c.children.length>200)c.removeChild(c.firstChild);
+c.scrollTop=c.scrollHeight;
+}
+
+function setMode(m){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'setMode',mode:m}))}
+function setSens(i,v){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'setSensitivity',index:i,value:parseInt(v)/100}))}
+function onSl(i,v){el('sv-'+i).textContent=v+'%'}
+function setEn(i,en){if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'setEnabled',index:i,enabled:en}))}
+function onTest(v){
+el('testVal').textContent=v+'%';
+if(ws&&ws.readyState===1)ws.send(JSON.stringify({type:'test',intensity:parseInt(v)/100}));
+}
+
+conn();
+</script>
+</body>
+</html>
